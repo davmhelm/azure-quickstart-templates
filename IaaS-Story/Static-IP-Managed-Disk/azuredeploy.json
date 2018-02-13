@@ -77,8 +77,8 @@
         "ipAddress": "192.168.1.101"
       }
     },
-    "vnetName":"[concat(parameters('vnetNamePrefix'), uniqueString(resourceGroup().id)]",
-    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',parameters('vnetName'))]",
+    "vnetName":"[concat(parameters('vnetNamePrefix'), uniqueString(resourceGroup().id))]",
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnetName'))]",
     "frontEndSubnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('frontEndSubnetName'))]",
     "webVMSetting": "[variables('webVMSettings')[parameters('osType')]]"
   },
@@ -86,7 +86,7 @@
       {
         "apiVersion": "2015-06-15",
         "type": "Microsoft.Network/virtualNetworks",
-        "name": "[parameters('vnetName')]",
+        "name": "[variables('vnetName')]",
         "location": "[resourceGroup().location]",
         "tags": {
           "displayName": "VNet"
@@ -129,7 +129,7 @@
         },
         "dependsOn": [
           "[concat('Microsoft.Network/publicIPAddresses/', variables('webVMSetting').pipName)]",
-          "[concat('Microsoft.Network/virtualNetworks/', parameters('vnetName'))]"
+          "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]"
         ],
         "properties": {
           "ipConfigurations": [
