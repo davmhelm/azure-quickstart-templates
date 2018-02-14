@@ -1,0 +1,178 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vnetNamePrefix": {
+      "type": "string",
+      "defaultValue": "WTestVNet",
+      "metadata": {
+        "description": "Prefix of name for the new VNet. Full vnet name will be dynamically generated for uniqueness"
+      }
+    },
+    "vnetPrefix": {
+      "type": "string",
+      "defaultValue": "192.168.0.0/16",
+      "metadata": {
+        "description": "CIDR prefix for the VNet address space."
+      }
+    },
+    "frontEndSubnetName": {
+      "type": "string",
+      "defaultValue": "FrontEnd",
+      "metadata": {
+        "description": "Name for the front end subnet."
+      }
+    },
+    "frontEndSubnetPrefix": {
+      "type": "string",
+      "defaultValue": "192.168.1.0/24",
+      "metadata": {
+        "description": "CIDR address prefix for the front end subnet."
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "metadata": { "description": "Username for local admin account." }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": { "description": "Password for local admin account." }
+    },
+    "vmImageResourceGroup": {
+      "type": "string",
+      "metadata": { "description": "Resource group for VM image to be used for creation." }
+    },
+    "vmImageName": {
+      "type": "string",
+      "metadata": { "description": "Resource name for VM image to be used for creation." }
+    }
+  },
+  "variables": {
+    "webVMSettings": {
+      "Windows": {
+        "vmSize": "Standard_A2_v2",
+        "publisher": "MicrosoftWindowsServer",
+        "offer": "WindowsServer",
+        "sku": "2012-R2-Datacenter",
+        "version": "latest",
+        "vmName": "WEB1",
+        "osdisk": "osdiskweb",
+        "nicName": "NICWEB1",
+        "pipName": "PIPWEB1",
+        "ipAddress": "192.168.1.101"
+      }
+    },
+    "vnetName":"[concat(parameters('vnetNamePrefix'), uniqueString(resourceGroup().id))]",
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnetName'))]",
+    "frontEndSubnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('frontEndSubnetName'))]",
+    "webVMSetting": "[variables('webVMSettings')['Windows']]",
+    "vmImageID": "[resourceId(parameters('vmImageResourceGroup'),'Microsoft.Compute/images',parameters('vmImageName'))]"
+  },
+    "resources": [
+      {
+        "apiVersion": "2015-06-15",
+        "type": "Microsoft.Network/virtualNetworks",
+        "name": "[variables('vnetName')]",
+        "location": "[resourceGroup().location]",
+        "tags": {
+          "displayName": "VNet"
+        },
+        "properties": {
+          "addressSpace": {
+            "addressPrefixes": [
+              "[parameters('vnetPrefix')]"
+            ]
+          },
+          "subnets": [
+            {
+              "name": "[parameters('frontEndSubnetName')]",
+              "properties": {
+                "addressPrefix": "[parameters('frontEndSubnetPrefix')]"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "2015-06-15",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "name": "[variables('webVMSetting').pipName]",
+        "location": "[resourceGroup().location]",
+        "properties": {
+          "publicIPAllocationMethod": "Static"
+        },
+        "tags": {
+          "displayName": "PublicIPAddress - Web"
+        }
+      },
+      {
+        "apiVersion": "2015-06-15",
+        "type": "Microsoft.Network/networkInterfaces",
+        "name": "[variables('webVMSetting').nicName]",
+        "location": "[resourceGroup().location]",
+        "tags": {
+          "displayName": "NetworkInterface - Web"
+        },
+        "dependsOn": [
+          "[concat('Microsoft.Network/publicIPAddresses/', variables('webVMSetting').pipName)]",
+          "[concat('Microsoft.Network/virtualNetworks/', variables('vnetName'))]"
+        ],
+        "properties": {
+          "ipConfigurations": [
+            {
+              "name": "ipconfig1",
+              "properties": {
+                "privateIPAllocationMethod": "Static",
+                "privateIPAddress": "[variables('webVMSetting').ipAddress]",
+                "publicIPAddress": {
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('webVMSetting').pipName)]"
+                },
+                "subnet": {
+                  "id": "[variables('frontEndSubnetRef')]"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "apiVersion": "2017-03-30",
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[variables('webVMSetting').vmName]",
+        "location": "[resourceGroup().location]",
+        "dependsOn": [
+          "[concat('Microsoft.Network/networkInterfaces/', variables('webVMSetting').nicName)]"
+        ],
+        "tags": {
+          "displayName": "VM - Web"
+        },
+        "properties": {
+          "hardwareProfile": {
+            "vmSize": "[variables('webVMSetting').vmSize]"
+          },
+          "osProfile": {
+            "computerName": "[variables('webVMSetting').vmName]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+          },
+          "storageProfile": {
+            "imageReference": {
+              "id": "[variables('vmImageID')]"
+            },
+            "osDisk": {
+              "name": "[variables('webVMSetting').osdisk]",
+              "caching": "ReadWrite",
+              "createOption": "FromImage"
+            }
+          },
+          "networkProfile": {
+            "networkInterfaces": [
+              {
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('webVMSetting').nicName)]"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }

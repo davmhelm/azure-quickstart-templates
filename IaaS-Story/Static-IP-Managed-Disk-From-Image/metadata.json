@@ -1,0 +1,8 @@
+{
+  "itemDisplayName": "Sample for VM from managed image, with static IP (Public and Private) and dynamically generated VNet name.",
+  "description": "Sample for VM from managed image, with static IP (Public and Private) and dynamically generated VNet name.",
+  "summary": "Sample for VM from managed image, with static IP (Public and Private) and dynamically generated VNet name.",
+  "githubUsername": "davmhelm",
+  "dateUpdated": "2018-02-14"
+}
+
